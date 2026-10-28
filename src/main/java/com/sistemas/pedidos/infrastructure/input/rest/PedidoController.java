@@ -93,4 +93,14 @@ public class PedidoController {
                                                             @RequestBody EntregarPedidoRequestDto dto) {
         return ResponseEntity.ok(pedidoHandler.entregarPedido(id, dto, idUsuarioAutenticado()));
     }
+
+    @Operation(summary = "HU 16: Cancelar un pedido propio que siga PENDIENTE (requiere rol CLIENTE)")
+    @ApiResponse(responseCode = "200", description = "Pedido cancelado")
+    @ApiResponse(responseCode = "403", description = "El pedido no pertenece al cliente autenticado")
+    @ApiResponse(responseCode = "404", description = "El pedido no existe")
+    @ApiResponse(responseCode = "409", description = "El pedido ya no esta PENDIENTE")
+    @PatchMapping("/{id}/cancelar")
+    public ResponseEntity<PedidoResponseDto> cancelarPedido(@PathVariable Long id) {
+        return ResponseEntity.ok(pedidoHandler.cancelarPedido(id, idUsuarioAutenticado()));
+    }
 }
