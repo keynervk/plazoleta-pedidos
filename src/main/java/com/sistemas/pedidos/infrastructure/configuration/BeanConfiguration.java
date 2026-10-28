@@ -1,11 +1,14 @@
 package com.sistemas.pedidos.infrastructure.configuration;
 
 import com.sistemas.pedidos.domain.api.IPedidoServicePort;
+import com.sistemas.pedidos.domain.api.ITrazabilidadServicePort;
 import com.sistemas.pedidos.domain.spi.INotificacionPort;
+import com.sistemas.pedidos.domain.spi.IPedidoEstadoLogPersistencePort;
 import com.sistemas.pedidos.domain.spi.IPedidoPersistencePort;
 import com.sistemas.pedidos.domain.spi.IPlazoletaExternoPort;
 import com.sistemas.pedidos.domain.spi.IUsuarioExternoPort;
 import com.sistemas.pedidos.domain.usecase.PedidoUseCase;
+import com.sistemas.pedidos.domain.usecase.TrazabilidadUseCase;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -16,8 +19,15 @@ public class BeanConfiguration {
     public IPedidoServicePort pedidoServicePort(IPedidoPersistencePort pedidoPersistencePort,
                                                 IPlazoletaExternoPort plazoletaExternoPort,
                                                 IUsuarioExternoPort usuarioExternoPort,
-                                                INotificacionPort notificacionPort) {
+                                                INotificacionPort notificacionPort,
+                                                IPedidoEstadoLogPersistencePort pedidoEstadoLogPersistencePort) {
         return new PedidoUseCase(pedidoPersistencePort, plazoletaExternoPort, usuarioExternoPort,
-                notificacionPort);
+                notificacionPort, pedidoEstadoLogPersistencePort);
+    }
+
+    @Bean
+    public ITrazabilidadServicePort trazabilidadServicePort(IPedidoPersistencePort pedidoPersistencePort,
+                                                            IPedidoEstadoLogPersistencePort pedidoEstadoLogPersistencePort) {
+        return new TrazabilidadUseCase(pedidoPersistencePort, pedidoEstadoLogPersistencePort);
     }
 }
