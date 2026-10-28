@@ -8,10 +8,12 @@ import com.sistemas.pedidos.domain.exception.PinInvalidoException;
 import com.sistemas.pedidos.domain.exception.ValidacionException;
 import com.sistemas.pedidos.domain.model.EstadoPedido;
 import com.sistemas.pedidos.domain.model.Pedido;
+import com.sistemas.pedidos.domain.model.PedidoEstadoLog;
 import com.sistemas.pedidos.domain.model.PedidoPlato;
 import com.sistemas.pedidos.domain.model.Plato;
 import com.sistemas.pedidos.domain.model.Restaurante;
 import com.sistemas.pedidos.domain.spi.INotificacionPort;
+import com.sistemas.pedidos.domain.spi.IPedidoEstadoLogPersistencePort;
 import com.sistemas.pedidos.domain.spi.IPedidoPersistencePort;
 import com.sistemas.pedidos.domain.spi.IPlazoletaExternoPort;
 import com.sistemas.pedidos.domain.spi.IUsuarioExternoPort;
@@ -65,6 +67,9 @@ class PedidoUseCaseTest {
     @Mock
     private INotificacionPort notificacionPort;
 
+    @Mock
+    private IPedidoEstadoLogPersistencePort pedidoEstadoLogPersistencePort;
+
     @InjectMocks
     private PedidoUseCase pedidoUseCase;
 
@@ -99,6 +104,14 @@ class PedidoUseCaseTest {
         when(usuarioExternoPort.obtenerIdRestauranteDeEmpleado(ID_EMPLEADO)).thenReturn(ID_RESTAURANTE);
     }
 
+    private void verificarCambioDeEstadoRegistrado(EstadoPedido anterior, EstadoPedido nuevo) {
+        ArgumentCaptor<PedidoEstadoLog> captor = ArgumentCaptor.forClass(PedidoEstadoLog.class);
+        verify(pedidoEstadoLogPersistencePort).registrarCambio(captor.capture());
+        assertEquals(anterior, captor.getValue().getEstadoAnterior());
+        assertEquals(nuevo, captor.getValue().getEstadoNuevo());
+        assertNotNull(captor.getValue().getFechaCambio());
+    }
+
     private void elClienteNoTienePedidosActivos() {
         when(pedidoPersistencePort.existePedidoDeClienteEnEstados(eq(ID_CLIENTE), anyList())).thenReturn(false);
     }
@@ -124,6 +137,7 @@ class PedidoUseCaseTest {
         assertNotNull(guardado.getFechaCreacion());
         assertNull(guardado.getIdEmpleadoAsignado());
         assertNull(guardado.getPin());
+        verificarCambioDeEstadoRegistrado(null, EstadoPedido.PENDIENTE);
     }
 
     @Test
@@ -292,6 +306,7 @@ class PedidoUseCaseTest {
         verify(pedidoPersistencePort).actualizarPedido(captor.capture());
         assertEquals(EstadoPedido.EN_PREPARACION, captor.getValue().getEstado());
         assertEquals(ID_EMPLEADO, captor.getValue().getIdEmpleadoAsignado());
+        verificarCambioDeEstadoRegistrado(EstadoPedido.PENDIENTE, EstadoPedido.EN_PREPARACION);
     }
 
     @ParameterizedTest
@@ -302,6 +317,7 @@ class PedidoUseCaseTest {
 
         assertThrows(EstadoPedidoInvalidoException.class, () -> pedidoUseCase.asignarPedido(ID_PEDIDO, ID_EMPLEADO));
         verify(pedidoPersistencePort, never()).actualizarPedido(any());
+        verify(pedidoEstadoLogPersistencePort, never()).registrarCambio(any());
     }
 
     @Test
@@ -347,6 +363,7 @@ class PedidoUseCaseTest {
         ArgumentCaptor<String> captorMensaje = ArgumentCaptor.forClass(String.class);
         verify(notificacionPort).enviarSms(eq("+573001112233"), captorMensaje.capture());
         assertTrue(captorMensaje.getValue().contains(actualizado.getPin()));
+        verificarCambioDeEstadoRegistrado(EstadoPedido.EN_PREPARACION, EstadoPedido.LISTO);
     }
 
     @ParameterizedTest
@@ -397,6 +414,7 @@ class PedidoUseCaseTest {
         ArgumentCaptor<Pedido> captor = ArgumentCaptor.forClass(Pedido.class);
         verify(pedidoPersistencePort).actualizarPedido(captor.capture());
         assertEquals(EstadoPedido.ENTREGADO, captor.getValue().getEstado());
+        verificarCambioDeEstadoRegistrado(EstadoPedido.LISTO, EstadoPedido.ENTREGADO);
     }
 
     @Test
@@ -406,6 +424,7 @@ class PedidoUseCaseTest {
 
         assertThrows(PinInvalidoException.class, () -> pedidoUseCase.entregarPedido(ID_PEDIDO, "000000", ID_EMPLEADO));
         verify(pedidoPersistencePort, never()).actualizarPedido(any());
+        verify(pedidoEstadoLogPersistencePort, never()).registrarCambio(any());
     }
 
     @ParameterizedTest
@@ -463,6 +482,7 @@ class PedidoUseCaseTest {
         ArgumentCaptor<Pedido> captor = ArgumentCaptor.forClass(Pedido.class);
         verify(pedidoPersistencePort).actualizarPedido(captor.capture());
         assertEquals(EstadoPedido.CANCELADO, captor.getValue().getEstado());
+        verificarCambioDeEstadoRegistrado(EstadoPedido.PENDIENTE, EstadoPedido.CANCELADO);
     }
 
     @ParameterizedTest
