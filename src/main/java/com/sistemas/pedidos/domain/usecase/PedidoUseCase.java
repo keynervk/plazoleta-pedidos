@@ -1,8 +1,10 @@
 package com.sistemas.pedidos.domain.usecase;
 
 import com.sistemas.pedidos.domain.api.IPedidoServicePort;
+import com.sistemas.pedidos.domain.exception.EstadoPedidoInvalidoException;
 import com.sistemas.pedidos.domain.exception.NoAutorizadoException;
 import com.sistemas.pedidos.domain.exception.PedidoActivoExistenteException;
+import com.sistemas.pedidos.domain.exception.PedidoNoEncontradoException;
 import com.sistemas.pedidos.domain.exception.ValidacionException;
 import com.sistemas.pedidos.domain.model.EstadoPedido;
 import com.sistemas.pedidos.domain.model.Pedido;
@@ -91,6 +93,45 @@ public class PedidoUseCase implements IPedidoServicePort {
 
         Long idRestaurante = obtenerRestauranteDelEmpleado(idEmpleado);
         return pedidoPersistencePort.listarPorRestauranteYEstado(idRestaurante, estado, pagina, tamanioPagina);
+    }
+
+    @Override
+    public Pedido asignarPedido(Long idPedido, Long idEmpleado) {
+        Pedido pedido = obtenerPedidoDelRestauranteDelEmpleado(idPedido, idEmpleado);
+        validarEstadoActual(pedido, EstadoPedido.PENDIENTE, "Solo se pueden asignar pedidos en estado PENDIENTE");
+
+        pedido.setEstado(EstadoPedido.EN_PREPARACION);
+        pedido.setIdEmpleadoAsignado(idEmpleado);
+        return pedidoPersistencePort.actualizarPedido(pedido);
+    }
+
+    private Pedido obtenerPedido(Long idPedido) {
+        if (idPedido == null) {
+            throw new ValidacionException("El id del pedido es obligatorio");
+        }
+        Pedido pedido = pedidoPersistencePort.buscarPorId(idPedido);
+        if (pedido == null) {
+            throw new PedidoNoEncontradoException("No existe un pedido con ese id");
+        }
+        return pedido;
+    }
+
+    private Pedido obtenerPedidoDelRestauranteDelEmpleado(Long idPedido, Long idEmpleado) {
+        Pedido pedido = obtenerPedido(idPedido);
+        Long idRestaurante = obtenerRestauranteDelEmpleado(idEmpleado);
+        if (!idRestaurante.equals(pedido.getIdRestaurante())) {
+            throw new NoAutorizadoException("Este pedido no pertenece al restaurante en el que trabajas");
+        }
+        return pedido;
+    }
+
+    private void validarEstadoActual(Pedido pedido, EstadoPedido estadoRequerido, String mensaje) {
+        if (pedido.getEstado() == EstadoPedido.ENTREGADO) {
+            throw new EstadoPedidoInvalidoException("El pedido ya fue entregado y no puede cambiar de estado");
+        }
+        if (pedido.getEstado() != estadoRequerido) {
+            throw new EstadoPedidoInvalidoException(mensaje);
+        }
     }
 
     private Long obtenerRestauranteDelEmpleado(Long idEmpleado) {

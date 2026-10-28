@@ -1,7 +1,9 @@
 package com.sistemas.pedidos.domain.usecase;
 
+import com.sistemas.pedidos.domain.exception.EstadoPedidoInvalidoException;
 import com.sistemas.pedidos.domain.exception.NoAutorizadoException;
 import com.sistemas.pedidos.domain.exception.PedidoActivoExistenteException;
+import com.sistemas.pedidos.domain.exception.PedidoNoEncontradoException;
 import com.sistemas.pedidos.domain.exception.ValidacionException;
 import com.sistemas.pedidos.domain.model.EstadoPedido;
 import com.sistemas.pedidos.domain.model.Pedido;
@@ -14,12 +16,14 @@ import com.sistemas.pedidos.domain.spi.IUsuarioExternoPort;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,6 +46,7 @@ class PedidoUseCaseTest {
     private static final Long ID_CLIENTE = 20L;
     private static final Long ID_RESTAURANTE = 1L;
     private static final Long ID_EMPLEADO = 30L;
+    private static final Long ID_PEDIDO = 100L;
 
     @Mock
     private IPedidoPersistencePort pedidoPersistencePort;
@@ -75,6 +80,15 @@ class PedidoUseCaseTest {
                 new Plato(10L, "Hamburguesa", 15000, true, ID_RESTAURANTE),
                 new Plato(11L, "Papas", 6000, true, ID_RESTAURANTE),
                 new Plato(12L, "Malteada", 9000, false, ID_RESTAURANTE));
+    }
+
+    private Pedido pedidoExistente(EstadoPedido estado) {
+        return new Pedido(ID_PEDIDO, ID_CLIENTE, ID_RESTAURANTE, estado, null, null,
+                LocalDateTime.now().minusMinutes(30), new ArrayList<>(List.of(new PedidoPlato(10L, 2, 15000))));
+    }
+
+    private void elEmpleadoTrabajaEnElRestaurante() {
+        when(usuarioExternoPort.obtenerIdRestauranteDeEmpleado(ID_EMPLEADO)).thenReturn(ID_RESTAURANTE);
     }
 
     private void elClienteNoTienePedidosActivos() {
@@ -255,5 +269,52 @@ class PedidoUseCaseTest {
     void listarPedidosPorEstado_conTamanioCero_lanzaValidacionException() {
         assertThrows(ValidacionException.class,
                 () -> pedidoUseCase.listarPedidosPorEstado(EstadoPedido.LISTO, 0, 0, ID_EMPLEADO));
+    }
+
+    // ---------- HU 13: asignarPedido ----------
+
+    @Test
+    void asignarPedido_pendienteDelRestauranteDelEmpleado_pasaAEnPreparacionConElEmpleado() {
+        when(pedidoPersistencePort.buscarPorId(ID_PEDIDO)).thenReturn(pedidoExistente(EstadoPedido.PENDIENTE));
+        elEmpleadoTrabajaEnElRestaurante();
+
+        pedidoUseCase.asignarPedido(ID_PEDIDO, ID_EMPLEADO);
+
+        ArgumentCaptor<Pedido> captor = ArgumentCaptor.forClass(Pedido.class);
+        verify(pedidoPersistencePort).actualizarPedido(captor.capture());
+        assertEquals(EstadoPedido.EN_PREPARACION, captor.getValue().getEstado());
+        assertEquals(ID_EMPLEADO, captor.getValue().getIdEmpleadoAsignado());
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = EstadoPedido.class, names = {"EN_PREPARACION", "LISTO", "CANCELADO", "ENTREGADO"})
+    void asignarPedido_siNoEstaPendiente_lanzaEstadoPedidoInvalidoException(EstadoPedido estado) {
+        when(pedidoPersistencePort.buscarPorId(ID_PEDIDO)).thenReturn(pedidoExistente(estado));
+        elEmpleadoTrabajaEnElRestaurante();
+
+        assertThrows(EstadoPedidoInvalidoException.class, () -> pedidoUseCase.asignarPedido(ID_PEDIDO, ID_EMPLEADO));
+        verify(pedidoPersistencePort, never()).actualizarPedido(any());
+    }
+
+    @Test
+    void asignarPedido_deOtroRestaurante_lanzaNoAutorizadoException() {
+        when(pedidoPersistencePort.buscarPorId(ID_PEDIDO)).thenReturn(pedidoExistente(EstadoPedido.PENDIENTE));
+        when(usuarioExternoPort.obtenerIdRestauranteDeEmpleado(ID_EMPLEADO)).thenReturn(2L);
+
+        assertThrows(NoAutorizadoException.class, () -> pedidoUseCase.asignarPedido(ID_PEDIDO, ID_EMPLEADO));
+        verify(pedidoPersistencePort, never()).actualizarPedido(any());
+    }
+
+    @Test
+    void asignarPedido_siElPedidoNoExiste_lanzaPedidoNoEncontradoException() {
+        when(pedidoPersistencePort.buscarPorId(ID_PEDIDO)).thenReturn(null);
+
+        assertThrows(PedidoNoEncontradoException.class, () -> pedidoUseCase.asignarPedido(ID_PEDIDO, ID_EMPLEADO));
+        verify(pedidoPersistencePort, never()).actualizarPedido(any());
+    }
+
+    @Test
+    void asignarPedido_sinIdPedido_lanzaValidacionException() {
+        assertThrows(ValidacionException.class, () -> pedidoUseCase.asignarPedido(null, ID_EMPLEADO));
     }
 }

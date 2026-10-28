@@ -10,4 +10,6 @@ public interface IPedidoServicePort {
     Pedido crearPedido(Pedido pedido, Long idCliente);
 
     List<Pedido> listarPedidosPorEstado(EstadoPedido estado, int pagina, int tamanioPagina, Long idEmpleado);
+
+    Pedido asignarPedido(Long idPedido, Long idEmpleado);
 }

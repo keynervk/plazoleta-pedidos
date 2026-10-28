@@ -1,7 +1,9 @@
 package com.sistemas.pedidos.infrastructure.exceptionhandler;
 
+import com.sistemas.pedidos.domain.exception.EstadoPedidoInvalidoException;
 import com.sistemas.pedidos.domain.exception.NoAutorizadoException;
 import com.sistemas.pedidos.domain.exception.PedidoActivoExistenteException;
+import com.sistemas.pedidos.domain.exception.PedidoNoEncontradoException;
 import com.sistemas.pedidos.domain.exception.ServicioExternoException;
 import com.sistemas.pedidos.domain.exception.ValidacionException;
 import org.springframework.http.HttpStatus;
@@ -34,6 +36,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handlePedidoActivo(PedidoActivoExistenteException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ErrorResponse(409, ex.getMessage()));
+    }
+
+    @ExceptionHandler(EstadoPedidoInvalidoException.class)
+    public ResponseEntity<ErrorResponse> handleEstadoInvalido(EstadoPedidoInvalidoException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(409, ex.getMessage()));
+    }
+
+    @ExceptionHandler(PedidoNoEncontradoException.class)
+    public ResponseEntity<ErrorResponse> handlePedidoNoEncontrado(PedidoNoEncontradoException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(404, ex.getMessage()));
     }
 
     @ExceptionHandler(ServicioExternoException.class)

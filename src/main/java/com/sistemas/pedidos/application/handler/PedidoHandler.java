@@ -36,4 +36,8 @@ public class PedidoHandler {
         return pedidoServicePort.listarPedidosPorEstado(estado, pagina, tamanioPagina, idEmpleado)
                 .stream().map(responseMapper::toDto).toList();
     }
+
+    public PedidoResponseDto asignarPedido(Long idPedido, Long idEmpleado) {
+        return responseMapper.toDto(pedidoServicePort.asignarPedido(idPedido, idEmpleado));
+    }
 }
