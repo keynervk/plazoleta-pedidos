@@ -9,10 +9,12 @@ import com.sistemas.pedidos.domain.exception.PinInvalidoException;
 import com.sistemas.pedidos.domain.exception.ValidacionException;
 import com.sistemas.pedidos.domain.model.EstadoPedido;
 import com.sistemas.pedidos.domain.model.Pedido;
+import com.sistemas.pedidos.domain.model.PedidoEstadoLog;
 import com.sistemas.pedidos.domain.model.PedidoPlato;
 import com.sistemas.pedidos.domain.model.Plato;
 import com.sistemas.pedidos.domain.model.Restaurante;
 import com.sistemas.pedidos.domain.spi.INotificacionPort;
+import com.sistemas.pedidos.domain.spi.IPedidoEstadoLogPersistencePort;
 import com.sistemas.pedidos.domain.spi.IPedidoPersistencePort;
 import com.sistemas.pedidos.domain.spi.IPlazoletaExternoPort;
 import com.sistemas.pedidos.domain.spi.IUsuarioExternoPort;
@@ -37,15 +39,18 @@ public class PedidoUseCase implements IPedidoServicePort {
     private final IPlazoletaExternoPort plazoletaExternoPort;
     private final IUsuarioExternoPort usuarioExternoPort;
     private final INotificacionPort notificacionPort;
+    private final IPedidoEstadoLogPersistencePort pedidoEstadoLogPersistencePort;
 
     public PedidoUseCase(IPedidoPersistencePort pedidoPersistencePort,
                          IPlazoletaExternoPort plazoletaExternoPort,
                          IUsuarioExternoPort usuarioExternoPort,
-                         INotificacionPort notificacionPort) {
+                         INotificacionPort notificacionPort,
+                         IPedidoEstadoLogPersistencePort pedidoEstadoLogPersistencePort) {
         this.pedidoPersistencePort = pedidoPersistencePort;
         this.plazoletaExternoPort = plazoletaExternoPort;
         this.usuarioExternoPort = usuarioExternoPort;
         this.notificacionPort = notificacionPort;
+        this.pedidoEstadoLogPersistencePort = pedidoEstadoLogPersistencePort;
     }
 
     @Override
@@ -85,7 +90,9 @@ public class PedidoUseCase implements IPedidoServicePort {
         pedido.setIdEmpleadoAsignado(null);
         pedido.setPin(null);
         pedido.setFechaCreacion(LocalDateTime.now());
-        return pedidoPersistencePort.guardarPedido(pedido);
+        Pedido guardado = pedidoPersistencePort.guardarPedido(pedido);
+        registrarCambioDeEstado(guardado.getId(), null, EstadoPedido.PENDIENTE, guardado.getFechaCreacion());
+        return guardado;
     }
 
     @Override
@@ -109,9 +116,8 @@ public class PedidoUseCase implements IPedidoServicePort {
         Pedido pedido = obtenerPedidoDelRestauranteDelEmpleado(idPedido, idEmpleado);
         validarEstadoActual(pedido, EstadoPedido.PENDIENTE, "Solo se pueden asignar pedidos en estado PENDIENTE");
 
-        pedido.setEstado(EstadoPedido.EN_PREPARACION);
         pedido.setIdEmpleadoAsignado(idEmpleado);
-        return pedidoPersistencePort.actualizarPedido(pedido);
+        return cambiarEstado(pedido, EstadoPedido.EN_PREPARACION);
     }
 
     @Override
@@ -121,9 +127,8 @@ public class PedidoUseCase implements IPedidoServicePort {
                 "Solo se pueden marcar como listos los pedidos en estado EN_PREPARACION");
 
         String pin = generarPin();
-        pedido.setEstado(EstadoPedido.LISTO);
         pedido.setPin(pin);
-        Pedido actualizado = pedidoPersistencePort.actualizarPedido(pedido);
+        Pedido actualizado = cambiarEstado(pedido, EstadoPedido.LISTO);
 
         String celular = usuarioExternoPort.obtenerCelular(pedido.getIdCliente());
         notificacionPort.enviarSms(celular, "Tu pedido #" + pedido.getId()
@@ -144,8 +149,7 @@ public class PedidoUseCase implements IPedidoServicePort {
             throw new PinInvalidoException("El PIN de seguridad no coincide con el del pedido");
         }
 
-        pedido.setEstado(EstadoPedido.ENTREGADO);
-        return pedidoPersistencePort.actualizarPedido(pedido);
+        return cambiarEstado(pedido, EstadoPedido.ENTREGADO);
     }
 
     @Override
@@ -158,8 +162,21 @@ public class PedidoUseCase implements IPedidoServicePort {
             throw new EstadoPedidoInvalidoException(MENSAJE_NO_CANCELABLE);
         }
 
-        pedido.setEstado(EstadoPedido.CANCELADO);
-        return pedidoPersistencePort.actualizarPedido(pedido);
+        return cambiarEstado(pedido, EstadoPedido.CANCELADO);
+    }
+
+    private Pedido cambiarEstado(Pedido pedido, EstadoPedido nuevoEstado) {
+        EstadoPedido estadoAnterior = pedido.getEstado();
+        pedido.setEstado(nuevoEstado);
+        Pedido actualizado = pedidoPersistencePort.actualizarPedido(pedido);
+        registrarCambioDeEstado(pedido.getId(), estadoAnterior, nuevoEstado, LocalDateTime.now());
+        return actualizado;
+    }
+
+    private void registrarCambioDeEstado(Long idPedido, EstadoPedido estadoAnterior, EstadoPedido estadoNuevo,
+                                         LocalDateTime fecha) {
+        pedidoEstadoLogPersistencePort.registrarCambio(
+                new PedidoEstadoLog(null, idPedido, estadoAnterior, estadoNuevo, fecha));
     }
 
     private String generarPin() {
