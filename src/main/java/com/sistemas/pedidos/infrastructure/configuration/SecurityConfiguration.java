@@ -36,6 +36,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/error").permitAll()
                         .requestMatchers(HttpMethod.POST, "/pedidos").hasRole("CLIENTE")
                         .requestMatchers(HttpMethod.PATCH, "/pedidos/*/cancelar").hasRole("CLIENTE")
+                        .requestMatchers(HttpMethod.GET, "/pedidos/*/trazabilidad").hasRole("CLIENTE")
                         .requestMatchers(HttpMethod.GET, "/pedidos").hasRole("EMPLEADO")
                         .requestMatchers(HttpMethod.PATCH, "/pedidos/*/asignar", "/pedidos/*/listo", "/pedidos/*/entregar")
                         .hasRole("EMPLEADO")
