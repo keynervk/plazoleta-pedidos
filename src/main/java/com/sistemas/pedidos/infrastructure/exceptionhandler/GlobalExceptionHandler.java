@@ -4,6 +4,7 @@ import com.sistemas.pedidos.domain.exception.EstadoPedidoInvalidoException;
 import com.sistemas.pedidos.domain.exception.NoAutorizadoException;
 import com.sistemas.pedidos.domain.exception.PedidoActivoExistenteException;
 import com.sistemas.pedidos.domain.exception.PedidoNoEncontradoException;
+import com.sistemas.pedidos.domain.exception.PinInvalidoException;
 import com.sistemas.pedidos.domain.exception.ServicioExternoException;
 import com.sistemas.pedidos.domain.exception.ValidacionException;
 import org.springframework.http.HttpStatus;
@@ -22,6 +23,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ValidacionException.class)
     public ResponseEntity<ErrorResponse> handleValidacion(ValidacionException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(400, ex.getMessage()));
+    }
+
+    @ExceptionHandler(PinInvalidoException.class)
+    public ResponseEntity<ErrorResponse> handlePinInvalido(PinInvalidoException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse(400, ex.getMessage()));
     }

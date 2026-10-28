@@ -1,5 +1,6 @@
 package com.sistemas.pedidos.application.handler;
 
+import com.sistemas.pedidos.application.dto.EntregarPedidoRequestDto;
 import com.sistemas.pedidos.application.dto.PedidoRequestDto;
 import com.sistemas.pedidos.application.dto.PedidoResponseDto;
 import com.sistemas.pedidos.application.mapper.PedidoRequestMapper;
@@ -43,5 +44,9 @@ public class PedidoHandler {
 
     public PedidoResponseDto marcarPedidoListo(Long idPedido, Long idEmpleado) {
         return responseMapper.toDto(pedidoServicePort.marcarPedidoListo(idPedido, idEmpleado));
+    }
+
+    public PedidoResponseDto entregarPedido(Long idPedido, EntregarPedidoRequestDto dto, Long idEmpleado) {
+        return responseMapper.toDto(pedidoServicePort.entregarPedido(idPedido, dto.pin(), idEmpleado));
     }
 }

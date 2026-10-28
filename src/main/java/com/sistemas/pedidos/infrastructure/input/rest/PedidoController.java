@@ -1,5 +1,6 @@
 package com.sistemas.pedidos.infrastructure.input.rest;
 
+import com.sistemas.pedidos.application.dto.EntregarPedidoRequestDto;
 import com.sistemas.pedidos.application.dto.PedidoRequestDto;
 import com.sistemas.pedidos.application.dto.PedidoResponseDto;
 import com.sistemas.pedidos.application.handler.PedidoHandler;
@@ -79,5 +80,17 @@ public class PedidoController {
     @PatchMapping("/{id}/listo")
     public ResponseEntity<PedidoResponseDto> marcarPedidoListo(@PathVariable Long id) {
         return ResponseEntity.ok(pedidoHandler.marcarPedidoListo(id, idUsuarioAutenticado()));
+    }
+
+    @Operation(summary = "HU 15: Entregar un pedido LISTO validando el PIN del cliente (requiere rol EMPLEADO)")
+    @ApiResponse(responseCode = "200", description = "Pedido entregado")
+    @ApiResponse(responseCode = "400", description = "PIN ausente o incorrecto")
+    @ApiResponse(responseCode = "403", description = "El pedido no es del restaurante del empleado")
+    @ApiResponse(responseCode = "404", description = "El pedido no existe")
+    @ApiResponse(responseCode = "409", description = "El pedido no esta LISTO o ya fue entregado")
+    @PatchMapping("/{id}/entregar")
+    public ResponseEntity<PedidoResponseDto> entregarPedido(@PathVariable Long id,
+                                                            @RequestBody EntregarPedidoRequestDto dto) {
+        return ResponseEntity.ok(pedidoHandler.entregarPedido(id, dto, idUsuarioAutenticado()));
     }
 }

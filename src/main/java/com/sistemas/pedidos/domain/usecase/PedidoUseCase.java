@@ -5,6 +5,7 @@ import com.sistemas.pedidos.domain.exception.EstadoPedidoInvalidoException;
 import com.sistemas.pedidos.domain.exception.NoAutorizadoException;
 import com.sistemas.pedidos.domain.exception.PedidoActivoExistenteException;
 import com.sistemas.pedidos.domain.exception.PedidoNoEncontradoException;
+import com.sistemas.pedidos.domain.exception.PinInvalidoException;
 import com.sistemas.pedidos.domain.exception.ValidacionException;
 import com.sistemas.pedidos.domain.model.EstadoPedido;
 import com.sistemas.pedidos.domain.model.Pedido;
@@ -126,6 +127,23 @@ public class PedidoUseCase implements IPedidoServicePort {
         notificacionPort.enviarSms(celular, "Tu pedido #" + pedido.getId()
                 + " esta listo para recoger. Presenta este PIN de seguridad al reclamarlo: " + pin);
         return actualizado;
+    }
+
+    @Override
+    public Pedido entregarPedido(Long idPedido, String pin, Long idEmpleado) {
+        if (pin == null || pin.isBlank()) {
+            throw new ValidacionException("El PIN de seguridad es obligatorio para entregar el pedido");
+        }
+
+        Pedido pedido = obtenerPedidoDelRestauranteDelEmpleado(idPedido, idEmpleado);
+        validarEstadoActual(pedido, EstadoPedido.LISTO, "Solo se pueden entregar pedidos en estado LISTO");
+
+        if (!pin.trim().equals(pedido.getPin())) {
+            throw new PinInvalidoException("El PIN de seguridad no coincide con el del pedido");
+        }
+
+        pedido.setEstado(EstadoPedido.ENTREGADO);
+        return pedidoPersistencePort.actualizarPedido(pedido);
     }
 
     private String generarPin() {
