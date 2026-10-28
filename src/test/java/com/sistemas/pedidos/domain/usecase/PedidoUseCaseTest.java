@@ -1,5 +1,6 @@
 package com.sistemas.pedidos.domain.usecase;
 
+import com.sistemas.pedidos.domain.exception.NoAutorizadoException;
 import com.sistemas.pedidos.domain.exception.PedidoActivoExistenteException;
 import com.sistemas.pedidos.domain.exception.ValidacionException;
 import com.sistemas.pedidos.domain.model.EstadoPedido;
@@ -9,6 +10,7 @@ import com.sistemas.pedidos.domain.model.Plato;
 import com.sistemas.pedidos.domain.model.Restaurante;
 import com.sistemas.pedidos.domain.spi.IPedidoPersistencePort;
 import com.sistemas.pedidos.domain.spi.IPlazoletaExternoPort;
+import com.sistemas.pedidos.domain.spi.IUsuarioExternoPort;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -26,6 +28,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -37,12 +41,16 @@ class PedidoUseCaseTest {
 
     private static final Long ID_CLIENTE = 20L;
     private static final Long ID_RESTAURANTE = 1L;
+    private static final Long ID_EMPLEADO = 30L;
 
     @Mock
     private IPedidoPersistencePort pedidoPersistencePort;
 
     @Mock
     private IPlazoletaExternoPort plazoletaExternoPort;
+
+    @Mock
+    private IUsuarioExternoPort usuarioExternoPort;
 
     @InjectMocks
     private PedidoUseCase pedidoUseCase;
@@ -206,5 +214,46 @@ class PedidoUseCaseTest {
     @Test
     void crearPedido_conPedidoNulo_lanzaValidacionException() {
         assertThrows(ValidacionException.class, () -> pedidoUseCase.crearPedido(null, ID_CLIENTE));
+    }
+
+    // ---------- HU 12: listarPedidosPorEstado ----------
+
+    @Test
+    void listarPedidosPorEstado_conEmpleadoDeUnRestaurante_listaSoloLosDeSuRestaurante() {
+        List<Pedido> esperado = List.of(new Pedido());
+        when(usuarioExternoPort.obtenerIdRestauranteDeEmpleado(ID_EMPLEADO)).thenReturn(ID_RESTAURANTE);
+        when(pedidoPersistencePort.listarPorRestauranteYEstado(ID_RESTAURANTE, EstadoPedido.PENDIENTE, 0, 10))
+                .thenReturn(esperado);
+
+        List<Pedido> resultado = pedidoUseCase.listarPedidosPorEstado(EstadoPedido.PENDIENTE, 0, 10, ID_EMPLEADO);
+
+        assertEquals(esperado, resultado);
+    }
+
+    @Test
+    void listarPedidosPorEstado_siElEmpleadoNoTieneRestaurante_lanzaNoAutorizadoException() {
+        when(usuarioExternoPort.obtenerIdRestauranteDeEmpleado(ID_EMPLEADO)).thenReturn(null);
+
+        assertThrows(NoAutorizadoException.class,
+                () -> pedidoUseCase.listarPedidosPorEstado(EstadoPedido.PENDIENTE, 0, 10, ID_EMPLEADO));
+        verify(pedidoPersistencePort, never()).listarPorRestauranteYEstado(anyLong(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void listarPedidosPorEstado_sinEstado_lanzaValidacionException() {
+        assertThrows(ValidacionException.class,
+                () -> pedidoUseCase.listarPedidosPorEstado(null, 0, 10, ID_EMPLEADO));
+    }
+
+    @Test
+    void listarPedidosPorEstado_conPaginaNegativa_lanzaValidacionException() {
+        assertThrows(ValidacionException.class,
+                () -> pedidoUseCase.listarPedidosPorEstado(EstadoPedido.LISTO, -1, 10, ID_EMPLEADO));
+    }
+
+    @Test
+    void listarPedidosPorEstado_conTamanioCero_lanzaValidacionException() {
+        assertThrows(ValidacionException.class,
+                () -> pedidoUseCase.listarPedidosPorEstado(EstadoPedido.LISTO, 0, 0, ID_EMPLEADO));
     }
 }
