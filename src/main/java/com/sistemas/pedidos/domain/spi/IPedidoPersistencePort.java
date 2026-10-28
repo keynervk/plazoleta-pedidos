@@ -9,6 +9,10 @@ public interface IPedidoPersistencePort {
 
     Pedido guardarPedido(Pedido pedido);
 
+    Pedido buscarPorId(Long id);
+
+    Pedido actualizarPedido(Pedido pedido);
+
     boolean existePedidoDeClienteEnEstados(Long idCliente, List<EstadoPedido> estados);
 
     List<Pedido> listarPorRestauranteYEstado(Long idRestaurante, EstadoPedido estado, int pagina, int tamanioPagina);
