@@ -1,6 +1,7 @@
 package com.sistemas.pedidos.domain.usecase;
 
 import com.sistemas.pedidos.domain.api.IPedidoServicePort;
+import com.sistemas.pedidos.domain.exception.NoAutorizadoException;
 import com.sistemas.pedidos.domain.exception.PedidoActivoExistenteException;
 import com.sistemas.pedidos.domain.exception.ValidacionException;
 import com.sistemas.pedidos.domain.model.EstadoPedido;
@@ -10,6 +11,7 @@ import com.sistemas.pedidos.domain.model.Plato;
 import com.sistemas.pedidos.domain.model.Restaurante;
 import com.sistemas.pedidos.domain.spi.IPedidoPersistencePort;
 import com.sistemas.pedidos.domain.spi.IPlazoletaExternoPort;
+import com.sistemas.pedidos.domain.spi.IUsuarioExternoPort;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -25,11 +27,14 @@ public class PedidoUseCase implements IPedidoServicePort {
 
     private final IPedidoPersistencePort pedidoPersistencePort;
     private final IPlazoletaExternoPort plazoletaExternoPort;
+    private final IUsuarioExternoPort usuarioExternoPort;
 
     public PedidoUseCase(IPedidoPersistencePort pedidoPersistencePort,
-                         IPlazoletaExternoPort plazoletaExternoPort) {
+                         IPlazoletaExternoPort plazoletaExternoPort,
+                         IUsuarioExternoPort usuarioExternoPort) {
         this.pedidoPersistencePort = pedidoPersistencePort;
         this.plazoletaExternoPort = plazoletaExternoPort;
+        this.usuarioExternoPort = usuarioExternoPort;
     }
 
     @Override
@@ -70,6 +75,30 @@ public class PedidoUseCase implements IPedidoServicePort {
         pedido.setPin(null);
         pedido.setFechaCreacion(LocalDateTime.now());
         return pedidoPersistencePort.guardarPedido(pedido);
+    }
+
+    @Override
+    public List<Pedido> listarPedidosPorEstado(EstadoPedido estado, int pagina, int tamanioPagina, Long idEmpleado) {
+        if (estado == null) {
+            throw new ValidacionException("El estado es obligatorio");
+        }
+        if (pagina < 0) {
+            throw new ValidacionException("El numero de pagina no puede ser negativo");
+        }
+        if (tamanioPagina <= 0) {
+            throw new ValidacionException("El tamanio de la pagina debe ser mayor a 0");
+        }
+
+        Long idRestaurante = obtenerRestauranteDelEmpleado(idEmpleado);
+        return pedidoPersistencePort.listarPorRestauranteYEstado(idRestaurante, estado, pagina, tamanioPagina);
+    }
+
+    private Long obtenerRestauranteDelEmpleado(Long idEmpleado) {
+        Long idRestaurante = usuarioExternoPort.obtenerIdRestauranteDeEmpleado(idEmpleado);
+        if (idRestaurante == null) {
+            throw new NoAutorizadoException("No tienes un restaurante asignado como empleado");
+        }
+        return idRestaurante;
     }
 
     private void validarEstructuraDelPedido(Pedido pedido) {
