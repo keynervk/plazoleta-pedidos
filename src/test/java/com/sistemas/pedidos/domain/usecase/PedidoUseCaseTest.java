@@ -4,6 +4,7 @@ import com.sistemas.pedidos.domain.exception.EstadoPedidoInvalidoException;
 import com.sistemas.pedidos.domain.exception.NoAutorizadoException;
 import com.sistemas.pedidos.domain.exception.PedidoActivoExistenteException;
 import com.sistemas.pedidos.domain.exception.PedidoNoEncontradoException;
+import com.sistemas.pedidos.domain.exception.PinInvalidoException;
 import com.sistemas.pedidos.domain.exception.ValidacionException;
 import com.sistemas.pedidos.domain.model.EstadoPedido;
 import com.sistemas.pedidos.domain.model.Pedido;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -374,5 +376,79 @@ class PedidoUseCaseTest {
 
         assertThrows(PedidoNoEncontradoException.class,
                 () -> pedidoUseCase.marcarPedidoListo(ID_PEDIDO, ID_EMPLEADO));
+    }
+
+    // ---------- HU 15: entregarPedido ----------
+
+    private Pedido pedidoListoConPin() {
+        Pedido pedido = pedidoExistente(EstadoPedido.LISTO);
+        pedido.setIdEmpleadoAsignado(ID_EMPLEADO);
+        pedido.setPin("482913");
+        return pedido;
+    }
+
+    @Test
+    void entregarPedido_listoConPinCorrecto_quedaEntregado() {
+        when(pedidoPersistencePort.buscarPorId(ID_PEDIDO)).thenReturn(pedidoListoConPin());
+        elEmpleadoTrabajaEnElRestaurante();
+
+        pedidoUseCase.entregarPedido(ID_PEDIDO, " 482913 ", ID_EMPLEADO);
+
+        ArgumentCaptor<Pedido> captor = ArgumentCaptor.forClass(Pedido.class);
+        verify(pedidoPersistencePort).actualizarPedido(captor.capture());
+        assertEquals(EstadoPedido.ENTREGADO, captor.getValue().getEstado());
+    }
+
+    @Test
+    void entregarPedido_conPinIncorrecto_lanzaPinInvalidoException() {
+        when(pedidoPersistencePort.buscarPorId(ID_PEDIDO)).thenReturn(pedidoListoConPin());
+        elEmpleadoTrabajaEnElRestaurante();
+
+        assertThrows(PinInvalidoException.class, () -> pedidoUseCase.entregarPedido(ID_PEDIDO, "000000", ID_EMPLEADO));
+        verify(pedidoPersistencePort, never()).actualizarPedido(any());
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"   "})
+    void entregarPedido_sinPin_lanzaValidacionException(String pin) {
+        assertThrows(ValidacionException.class, () -> pedidoUseCase.entregarPedido(ID_PEDIDO, pin, ID_EMPLEADO));
+        verify(pedidoPersistencePort, never()).actualizarPedido(any());
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = EstadoPedido.class, names = {"PENDIENTE", "EN_PREPARACION", "CANCELADO"})
+    void entregarPedido_siNoEstaListo_lanzaEstadoPedidoInvalidoException(EstadoPedido estado) {
+        Pedido pedido = pedidoListoConPin();
+        pedido.setEstado(estado);
+        when(pedidoPersistencePort.buscarPorId(ID_PEDIDO)).thenReturn(pedido);
+        elEmpleadoTrabajaEnElRestaurante();
+
+        assertThrows(EstadoPedidoInvalidoException.class,
+                () -> pedidoUseCase.entregarPedido(ID_PEDIDO, "482913", ID_EMPLEADO));
+        verify(pedidoPersistencePort, never()).actualizarPedido(any());
+    }
+
+    @Test
+    void entregarPedido_yaEntregado_noPuedeVolverACambiarDeEstado() {
+        Pedido pedido = pedidoListoConPin();
+        pedido.setEstado(EstadoPedido.ENTREGADO);
+        when(pedidoPersistencePort.buscarPorId(ID_PEDIDO)).thenReturn(pedido);
+        elEmpleadoTrabajaEnElRestaurante();
+
+        EstadoPedidoInvalidoException ex = assertThrows(EstadoPedidoInvalidoException.class,
+                () -> pedidoUseCase.entregarPedido(ID_PEDIDO, "482913", ID_EMPLEADO));
+        assertEquals("El pedido ya fue entregado y no puede cambiar de estado", ex.getMessage());
+        verify(pedidoPersistencePort, never()).actualizarPedido(any());
+    }
+
+    @Test
+    void entregarPedido_deOtroRestaurante_lanzaNoAutorizadoException() {
+        when(pedidoPersistencePort.buscarPorId(ID_PEDIDO)).thenReturn(pedidoListoConPin());
+        when(usuarioExternoPort.obtenerIdRestauranteDeEmpleado(ID_EMPLEADO)).thenReturn(2L);
+
+        assertThrows(NoAutorizadoException.class,
+                () -> pedidoUseCase.entregarPedido(ID_PEDIDO, "482913", ID_EMPLEADO));
+        verify(pedidoPersistencePort, never()).actualizarPedido(any());
     }
 }
