@@ -30,6 +30,8 @@ public class PedidoUseCase implements IPedidoServicePort {
     private static final List<EstadoPedido> ESTADOS_ACTIVOS =
             List.of(EstadoPedido.PENDIENTE, EstadoPedido.EN_PREPARACION, EstadoPedido.LISTO);
     private static final SecureRandom GENERADOR_PIN = new SecureRandom();
+    private static final String MENSAJE_NO_CANCELABLE =
+            "Lo sentimos, tu pedido ya está en preparación y no puede cancelarse";
 
     private final IPedidoPersistencePort pedidoPersistencePort;
     private final IPlazoletaExternoPort plazoletaExternoPort;
@@ -143,6 +145,20 @@ public class PedidoUseCase implements IPedidoServicePort {
         }
 
         pedido.setEstado(EstadoPedido.ENTREGADO);
+        return pedidoPersistencePort.actualizarPedido(pedido);
+    }
+
+    @Override
+    public Pedido cancelarPedido(Long idPedido, Long idCliente) {
+        Pedido pedido = obtenerPedido(idPedido);
+        if (!pedido.getIdCliente().equals(idCliente)) {
+            throw new NoAutorizadoException("Solo puedes cancelar tus propios pedidos");
+        }
+        if (pedido.getEstado() != EstadoPedido.PENDIENTE) {
+            throw new EstadoPedidoInvalidoException(MENSAJE_NO_CANCELABLE);
+        }
+
+        pedido.setEstado(EstadoPedido.CANCELADO);
         return pedidoPersistencePort.actualizarPedido(pedido);
     }
 
