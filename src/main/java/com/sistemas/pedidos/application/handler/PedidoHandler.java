@@ -49,4 +49,8 @@ public class PedidoHandler {
     public PedidoResponseDto entregarPedido(Long idPedido, EntregarPedidoRequestDto dto, Long idEmpleado) {
         return responseMapper.toDto(pedidoServicePort.entregarPedido(idPedido, dto.pin(), idEmpleado));
     }
+
+    public PedidoResponseDto cancelarPedido(Long idPedido, Long idCliente) {
+        return responseMapper.toDto(pedidoServicePort.cancelarPedido(idPedido, idCliente));
+    }
 }
