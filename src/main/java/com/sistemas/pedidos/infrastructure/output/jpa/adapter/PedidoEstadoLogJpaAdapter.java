@@ -30,4 +30,9 @@ public class PedidoEstadoLogJpaAdapter implements IPedidoEstadoLogPersistencePor
         return pedidoEstadoLogRepository.findByIdPedidoOrderByFechaCambioAsc(idPedido)
                 .stream().map(mapper::toModel).toList();
     }
+
+    @Override
+    public List<PedidoEstadoLog> listarPorPedidos(List<Long> idsPedidos) {
+        return pedidoEstadoLogRepository.findByIdPedidoIn(idsPedidos).stream().map(mapper::toModel).toList();
+    }
 }

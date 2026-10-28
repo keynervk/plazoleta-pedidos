@@ -56,4 +56,10 @@ public class PedidoJpaAdapter implements IPedidoPersistencePort {
         return pedidoRepository.findByIdRestauranteAndEstado(idRestaurante, estado, pageable)
                 .stream().map(mapper::toModel).toList();
     }
+
+    @Override
+    public List<Pedido> listarTodosPorRestauranteYEstado(Long idRestaurante, EstadoPedido estado) {
+        return pedidoRepository.findAllByIdRestauranteAndEstado(idRestaurante, estado)
+                .stream().map(mapper::toModel).toList();
+    }
 }

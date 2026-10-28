@@ -5,6 +5,7 @@ import com.sistemas.pedidos.domain.exception.NoAutorizadoException;
 import com.sistemas.pedidos.domain.exception.PedidoActivoExistenteException;
 import com.sistemas.pedidos.domain.exception.PedidoNoEncontradoException;
 import com.sistemas.pedidos.domain.exception.PinInvalidoException;
+import com.sistemas.pedidos.domain.exception.RestauranteNoEncontradoException;
 import com.sistemas.pedidos.domain.exception.ServicioExternoException;
 import com.sistemas.pedidos.domain.exception.ValidacionException;
 import org.springframework.http.HttpStatus;
@@ -53,6 +54,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(PedidoNoEncontradoException.class)
     public ResponseEntity<ErrorResponse> handlePedidoNoEncontrado(PedidoNoEncontradoException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(404, ex.getMessage()));
+    }
+
+    @ExceptionHandler(RestauranteNoEncontradoException.class)
+    public ResponseEntity<ErrorResponse> handleRestauranteNoEncontrado(RestauranteNoEncontradoException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse(404, ex.getMessage()));
     }
