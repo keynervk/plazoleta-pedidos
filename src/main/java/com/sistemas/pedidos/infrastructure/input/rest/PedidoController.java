@@ -13,6 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -56,5 +58,15 @@ public class PedidoController {
             @Parameter(description = "Numero de pagina, empieza en 0") @RequestParam(defaultValue = "0") int pagina,
             @Parameter(description = "Cantidad de elementos por pagina") @RequestParam(defaultValue = "10") int tamanioPagina) {
         return ResponseEntity.ok(pedidoHandler.listarPorEstado(estado, pagina, tamanioPagina, idUsuarioAutenticado()));
+    }
+
+    @Operation(summary = "HU 13: Asignarse un pedido PENDIENTE, que pasa a EN_PREPARACION (requiere rol EMPLEADO)")
+    @ApiResponse(responseCode = "200", description = "Pedido asignado al empleado autenticado")
+    @ApiResponse(responseCode = "403", description = "El pedido no es del restaurante del empleado")
+    @ApiResponse(responseCode = "404", description = "El pedido no existe")
+    @ApiResponse(responseCode = "409", description = "El pedido no esta en estado PENDIENTE")
+    @PatchMapping("/{id}/asignar")
+    public ResponseEntity<PedidoResponseDto> asignarPedido(@PathVariable Long id) {
+        return ResponseEntity.ok(pedidoHandler.asignarPedido(id, idUsuarioAutenticado()));
     }
 }
