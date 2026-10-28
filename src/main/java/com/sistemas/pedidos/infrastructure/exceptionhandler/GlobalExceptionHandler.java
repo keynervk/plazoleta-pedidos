@@ -1,6 +1,7 @@
 package com.sistemas.pedidos.infrastructure.exceptionhandler;
 
 import com.sistemas.pedidos.domain.exception.NoAutorizadoException;
+import com.sistemas.pedidos.domain.exception.PedidoActivoExistenteException;
 import com.sistemas.pedidos.domain.exception.ServicioExternoException;
 import com.sistemas.pedidos.domain.exception.ValidacionException;
 import org.springframework.http.HttpStatus;
@@ -27,6 +28,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleNoAutorizado(NoAutorizadoException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(new ErrorResponse(403, ex.getMessage()));
+    }
+
+    @ExceptionHandler(PedidoActivoExistenteException.class)
+    public ResponseEntity<ErrorResponse> handlePedidoActivo(PedidoActivoExistenteException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(409, ex.getMessage()));
     }
 
     @ExceptionHandler(ServicioExternoException.class)
