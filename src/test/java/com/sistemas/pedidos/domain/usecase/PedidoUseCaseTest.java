@@ -451,4 +451,43 @@ class PedidoUseCaseTest {
                 () -> pedidoUseCase.entregarPedido(ID_PEDIDO, "482913", ID_EMPLEADO));
         verify(pedidoPersistencePort, never()).actualizarPedido(any());
     }
+
+    // ---------- HU 16: cancelarPedido ----------
+
+    @Test
+    void cancelarPedido_pendienteDelPropioCliente_quedaCancelado() {
+        when(pedidoPersistencePort.buscarPorId(ID_PEDIDO)).thenReturn(pedidoExistente(EstadoPedido.PENDIENTE));
+
+        pedidoUseCase.cancelarPedido(ID_PEDIDO, ID_CLIENTE);
+
+        ArgumentCaptor<Pedido> captor = ArgumentCaptor.forClass(Pedido.class);
+        verify(pedidoPersistencePort).actualizarPedido(captor.capture());
+        assertEquals(EstadoPedido.CANCELADO, captor.getValue().getEstado());
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = EstadoPedido.class, names = {"EN_PREPARACION", "LISTO", "ENTREGADO", "CANCELADO"})
+    void cancelarPedido_siNoEstaPendiente_lanzaEstadoPedidoInvalidoExceptionConElMensajeDeLaHU(EstadoPedido estado) {
+        when(pedidoPersistencePort.buscarPorId(ID_PEDIDO)).thenReturn(pedidoExistente(estado));
+
+        EstadoPedidoInvalidoException ex = assertThrows(EstadoPedidoInvalidoException.class,
+                () -> pedidoUseCase.cancelarPedido(ID_PEDIDO, ID_CLIENTE));
+        assertEquals("Lo sentimos, tu pedido ya está en preparación y no puede cancelarse", ex.getMessage());
+        verify(pedidoPersistencePort, never()).actualizarPedido(any());
+    }
+
+    @Test
+    void cancelarPedido_deOtroCliente_lanzaNoAutorizadoException() {
+        when(pedidoPersistencePort.buscarPorId(ID_PEDIDO)).thenReturn(pedidoExistente(EstadoPedido.PENDIENTE));
+
+        assertThrows(NoAutorizadoException.class, () -> pedidoUseCase.cancelarPedido(ID_PEDIDO, 999L));
+        verify(pedidoPersistencePort, never()).actualizarPedido(any());
+    }
+
+    @Test
+    void cancelarPedido_siElPedidoNoExiste_lanzaPedidoNoEncontradoException() {
+        when(pedidoPersistencePort.buscarPorId(ID_PEDIDO)).thenReturn(null);
+
+        assertThrows(PedidoNoEncontradoException.class, () -> pedidoUseCase.cancelarPedido(ID_PEDIDO, ID_CLIENTE));
+    }
 }
