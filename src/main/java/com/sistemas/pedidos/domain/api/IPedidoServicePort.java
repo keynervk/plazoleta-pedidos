@@ -1,8 +1,13 @@
 package com.sistemas.pedidos.domain.api;
 
+import com.sistemas.pedidos.domain.model.EstadoPedido;
 import com.sistemas.pedidos.domain.model.Pedido;
+
+import java.util.List;
 
 public interface IPedidoServicePort {
 
     Pedido crearPedido(Pedido pedido, Long idCliente);
+
+    List<Pedido> listarPedidosPorEstado(EstadoPedido estado, int pagina, int tamanioPagina, Long idEmpleado);
 }
