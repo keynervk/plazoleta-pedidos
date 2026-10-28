@@ -16,4 +16,6 @@ public interface IPedidoPersistencePort {
     boolean existePedidoDeClienteEnEstados(Long idCliente, List<EstadoPedido> estados);
 
     List<Pedido> listarPorRestauranteYEstado(Long idRestaurante, EstadoPedido estado, int pagina, int tamanioPagina);
+
+    List<Pedido> listarTodosPorRestauranteYEstado(Long idRestaurante, EstadoPedido estado);
 }
