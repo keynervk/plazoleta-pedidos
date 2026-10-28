@@ -9,4 +9,6 @@ public interface IPedidoEstadoLogPersistencePort {
     void registrarCambio(PedidoEstadoLog cambio);
 
     List<PedidoEstadoLog> listarPorPedido(Long idPedido);
+
+    List<PedidoEstadoLog> listarPorPedidos(List<Long> idsPedidos);
 }
