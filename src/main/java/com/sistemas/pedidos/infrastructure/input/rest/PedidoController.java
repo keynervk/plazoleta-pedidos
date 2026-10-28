@@ -69,4 +69,15 @@ public class PedidoController {
     public ResponseEntity<PedidoResponseDto> asignarPedido(@PathVariable Long id) {
         return ResponseEntity.ok(pedidoHandler.asignarPedido(id, idUsuarioAutenticado()));
     }
+
+    @Operation(summary = "HU 14: Marcar un pedido EN_PREPARACION como LISTO y notificar al cliente por SMS con su PIN "
+            + "(requiere rol EMPLEADO)")
+    @ApiResponse(responseCode = "200", description = "Pedido listo; el PIN se envia al cliente (SMS simulado en consola)")
+    @ApiResponse(responseCode = "403", description = "El pedido no es del restaurante del empleado")
+    @ApiResponse(responseCode = "404", description = "El pedido no existe")
+    @ApiResponse(responseCode = "409", description = "El pedido no esta EN_PREPARACION")
+    @PatchMapping("/{id}/listo")
+    public ResponseEntity<PedidoResponseDto> marcarPedidoListo(@PathVariable Long id) {
+        return ResponseEntity.ok(pedidoHandler.marcarPedidoListo(id, idUsuarioAutenticado()));
+    }
 }

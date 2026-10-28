@@ -11,10 +11,12 @@ import com.sistemas.pedidos.domain.model.Pedido;
 import com.sistemas.pedidos.domain.model.PedidoPlato;
 import com.sistemas.pedidos.domain.model.Plato;
 import com.sistemas.pedidos.domain.model.Restaurante;
+import com.sistemas.pedidos.domain.spi.INotificacionPort;
 import com.sistemas.pedidos.domain.spi.IPedidoPersistencePort;
 import com.sistemas.pedidos.domain.spi.IPlazoletaExternoPort;
 import com.sistemas.pedidos.domain.spi.IUsuarioExternoPort;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -26,17 +28,21 @@ public class PedidoUseCase implements IPedidoServicePort {
 
     private static final List<EstadoPedido> ESTADOS_ACTIVOS =
             List.of(EstadoPedido.PENDIENTE, EstadoPedido.EN_PREPARACION, EstadoPedido.LISTO);
+    private static final SecureRandom GENERADOR_PIN = new SecureRandom();
 
     private final IPedidoPersistencePort pedidoPersistencePort;
     private final IPlazoletaExternoPort plazoletaExternoPort;
     private final IUsuarioExternoPort usuarioExternoPort;
+    private final INotificacionPort notificacionPort;
 
     public PedidoUseCase(IPedidoPersistencePort pedidoPersistencePort,
                          IPlazoletaExternoPort plazoletaExternoPort,
-                         IUsuarioExternoPort usuarioExternoPort) {
+                         IUsuarioExternoPort usuarioExternoPort,
+                         INotificacionPort notificacionPort) {
         this.pedidoPersistencePort = pedidoPersistencePort;
         this.plazoletaExternoPort = plazoletaExternoPort;
         this.usuarioExternoPort = usuarioExternoPort;
+        this.notificacionPort = notificacionPort;
     }
 
     @Override
@@ -103,6 +109,27 @@ public class PedidoUseCase implements IPedidoServicePort {
         pedido.setEstado(EstadoPedido.EN_PREPARACION);
         pedido.setIdEmpleadoAsignado(idEmpleado);
         return pedidoPersistencePort.actualizarPedido(pedido);
+    }
+
+    @Override
+    public Pedido marcarPedidoListo(Long idPedido, Long idEmpleado) {
+        Pedido pedido = obtenerPedidoDelRestauranteDelEmpleado(idPedido, idEmpleado);
+        validarEstadoActual(pedido, EstadoPedido.EN_PREPARACION,
+                "Solo se pueden marcar como listos los pedidos en estado EN_PREPARACION");
+
+        String pin = generarPin();
+        pedido.setEstado(EstadoPedido.LISTO);
+        pedido.setPin(pin);
+        Pedido actualizado = pedidoPersistencePort.actualizarPedido(pedido);
+
+        String celular = usuarioExternoPort.obtenerCelular(pedido.getIdCliente());
+        notificacionPort.enviarSms(celular, "Tu pedido #" + pedido.getId()
+                + " esta listo para recoger. Presenta este PIN de seguridad al reclamarlo: " + pin);
+        return actualizado;
+    }
+
+    private String generarPin() {
+        return String.format("%06d", GENERADOR_PIN.nextInt(1_000_000));
     }
 
     private Pedido obtenerPedido(Long idPedido) {
