@@ -14,4 +14,6 @@ public interface IPedidoServicePort {
     Pedido asignarPedido(Long idPedido, Long idEmpleado);
 
     Pedido marcarPedidoListo(Long idPedido, Long idEmpleado);
+
+    Pedido entregarPedido(Long idPedido, String pin, Long idEmpleado);
 }
