@@ -12,4 +12,6 @@ public interface IPedidoServicePort {
     List<Pedido> listarPedidosPorEstado(EstadoPedido estado, int pagina, int tamanioPagina, Long idEmpleado);
 
     Pedido asignarPedido(Long idPedido, Long idEmpleado);
+
+    Pedido marcarPedidoListo(Long idPedido, Long idEmpleado);
 }
