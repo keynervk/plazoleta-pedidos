@@ -40,4 +40,8 @@ public class PedidoHandler {
     public PedidoResponseDto asignarPedido(Long idPedido, Long idEmpleado) {
         return responseMapper.toDto(pedidoServicePort.asignarPedido(idPedido, idEmpleado));
     }
+
+    public PedidoResponseDto marcarPedidoListo(Long idPedido, Long idEmpleado) {
+        return responseMapper.toDto(pedidoServicePort.marcarPedidoListo(idPedido, idEmpleado));
+    }
 }

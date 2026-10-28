@@ -31,6 +31,12 @@ public class UsuarioExternoAdapter implements IUsuarioExternoPort {
         return usuario != null ? usuario.idRestaurante() : null;
     }
 
+    @Override
+    public String obtenerCelular(Long idUsuario) {
+        UsuarioRespuesta usuario = buscarUsuario(idUsuario);
+        return usuario != null ? usuario.celular() : null;
+    }
+
     // GET /usuarios/{id} exige JWT: RestTemplateConfiguration reenvia el token de la peticion actual
     private UsuarioRespuesta buscarUsuario(Long idUsuario) {
         try {
